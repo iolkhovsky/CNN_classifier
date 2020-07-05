@@ -1,20 +1,33 @@
 import torch
+from torch.nn import CrossEntropyLoss
+from metrics import accuracy
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader, batches=None):
     model.eval()
     test_loss = 0
+    res = {}
     correct = 0
+    loss_function = CrossEntropyLoss(reduction='sum')
+    batch_size = test_loader.batch_size
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+        for idx, (input, target) in enumerate(test_loader):
+            input, target = input.to(device), target.to(device)
+            output = model(input)
+            test_loss += loss_function(output, target).item()
+            pred = output.argmax(dim=1, keepdim=True)
+            acc = accuracy(pred, target, norm=False)
+            correct += acc
 
-    test_loss /= len(test_loader.dataset)
+            if batches is not None:
+                if idx >= batches - 1:
+                    break
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+        if batches is not None:
+            test_loss = test_loss / (batches * batch_size)
+            res["accuracy"] = correct / (batches * batch_size)
+        else:
+            test_loss = test_loss / (len(test_loader) * batch_size)
+            res["accuracy"] = correct / (len(test_loader) * batch_size)
+
+    return test_loss, res
