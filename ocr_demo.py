@@ -7,7 +7,7 @@ from cnn_classifier import MnistClassifier
 from utils import make_tensor_for_net
 
 
-DEFAULT_MODEL = "pretrained_models/CnnClassifierMNIST_completed_2020_07_06_14_56_16.pt"
+DEFAULT_MODEL = "pretrained_models/CnnClassifierMNIST_completed_2020_07_06_18_45_01.pt"
 
 
 class OcrProcessor:

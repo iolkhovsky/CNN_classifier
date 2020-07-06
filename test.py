@@ -10,7 +10,7 @@ from mnist_dataset import denormalize_image, get_test_dataloader
 from utils import add_pred_marks, array_yxc2cyx
 
 
-DEFAULT_MODEL = "pretrained_models/CnnClassifierMNIST_completed_2020_07_06_14_56_16.pt"
+DEFAULT_MODEL = "pretrained_models/CnnClassifierMNIST_completed_2020_07_06_18_45_01.pt"
 
 
 def test(model, device, test_loader, batches=None):

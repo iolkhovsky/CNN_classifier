@@ -94,6 +94,8 @@ def parse_args():
                         help="Abs path to pretrained model")
     parser.add_argument("--scheduler", type=int, default=1,
                         help="Use lr scheduler or not")
+    parser.add_argument("--l2", type=float, default=0,
+                        help="L2 reularization coefficient")
     args = parser.parse_args()
     return args
 
@@ -111,9 +113,9 @@ def main():
 
     optimizer = None
     if args.optimizer == "adam":
-        optimizer = Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.l2)
     elif args.optimizer == "sgd":
-        optimizer = SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.l2)
 
     scheduler = None
     if args.scheduler:
