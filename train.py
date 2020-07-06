@@ -34,7 +34,7 @@ def train(model, train_loader, optimizer, epoch_id=0, scheduler=None, device="cp
             global_step = epoch_id * len(train_loader) + batch_idx
             tboard_writer.add_scalar("Loss/Train", train_loss.item(), global_step)
 
-            if valid_period is not None:
+            if valid_period:
                 if (batch_idx + 1) % valid_period == 0:
                     pred = output.argmax(dim=1, keepdim=True)
                     train_acc = accuracy(pred, target, norm=True)
@@ -81,7 +81,7 @@ def parse_args():
                         help="Period of model autosave")
     parser.add_argument("--autosave-period-unit", type=str, default="e",
                         help="Units for autosave (e/b)")
-    parser.add_argument("--valid-period", type=int, default=0,
+    parser.add_argument("--valid-period", type=int, default=100,
                         help="Period of validation")
     parser.add_argument("--valid-period-unit", type=str, default="e",
                         help="Units for validation (e/b)")
@@ -117,7 +117,7 @@ def main():
     try:
         for e in range(args.epochs):
             train(model, train_dloader, optimizer, e, scheduler=scheduler, device=args.device,
-                  autosave_period=None, valid_period=10, test_routine=test,
+                  autosave_period=None, valid_period=args.valid_period, test_routine=test,
                   test_loader=test_dloader)
         model_name = "pretrained_models/" + str(model) + "_completed_" + get_readable_timestamp() + ".pt"
         torch.save(model.state_dict(), model_name)

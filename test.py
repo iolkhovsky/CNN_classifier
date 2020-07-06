@@ -34,13 +34,18 @@ def test(model, device, test_loader, batches=None):
             acc = accuracy(pred, target, norm=False)
             correct += acc
 
-            y_target += list(target)
-            y_predicted += list(pred.flatten())
+            y_predicted += list(pred.flatten()) if pred.device == "cpu" else list(pred.flatten().cpu())
+            y_target += list(target) if target.device == "cpu" else list(target.cpu())
 
             val_imgs = []
             for i, img in enumerate(input):
+                if img.device != "cpu":
+                    img = img.cpu()
                 img = denormalize_image(img[0])
-                img = add_pred_marks(img, output[i].numpy())
+                pred_vector = output[i]
+                if pred_vector.device != "cpu":
+                    pred_vector = pred_vector.cpu()
+                img = add_pred_marks(img, pred_vector.numpy())
                 img = array_yxc2cyx(img)
                 val_imgs.append(torch.from_numpy(img))
 
@@ -91,13 +96,18 @@ def test_with_bar(model, device, test_loader, batches=None):
                 acc = accuracy(pred, target, norm=False)
                 correct += acc
 
-                y_target += list(target)
-                y_predicted += list(pred.flatten())
+                y_predicted += list(pred.flatten()) if pred.device == "cpu" else list(pred.flatten().cpu())
+                y_target += list(target) if target.device == "cpu" else list(target.cpu())
 
                 val_imgs = []
                 for i, img in enumerate(input):
+                    if img.device != "cpu":
+                        img = img.cpu()
                     img = denormalize_image(img[0])
-                    img = add_pred_marks(img, output[i].numpy())
+                    pred_vector = output[i]
+                    if pred_vector.device != "cpu":
+                        pred_vector = pred_vector.cpu()
+                    img = add_pred_marks(img, pred_vector.numpy())
                     img = array_yxc2cyx(img)
                     val_imgs.append(torch.from_numpy(img))
 
