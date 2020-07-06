@@ -13,7 +13,7 @@ from utils import get_readable_timestamp
 from metrics import accuracy
 
 
-def train(model, train_loader, optimizer, epoch_id=0, device="cpu",
+def train(model, train_loader, optimizer, epoch_id=0, scheduler=None, device="cpu",
           autosave_period=None, valid_period=None, test_routine=None,
           test_loader=None):
     tboard_writer = SummaryWriter()
@@ -35,18 +35,22 @@ def train(model, train_loader, optimizer, epoch_id=0, device="cpu",
             tboard_writer.add_scalar("Loss/Train", train_loss.item(), global_step)
 
             if valid_period is not None:
-                pred = output.argmax(dim=1, keepdim=True)
-                train_acc = accuracy(pred, target, norm=True)
-                tboard_writer.add_scalar("Accuracy/Train", train_acc, global_step)
-                assert callable(test_routine)
-                assert test_loader is not None
-                val_loss, result = test_routine(model, device, test_loader, batches=1)
-                tboard_writer.add_scalar("Loss/Val", val_loss, global_step)
-                tboard_writer.add_scalar("Accuracy/Val", result["accuracy"], global_step)
-                if "images" in result.keys():
-                    img_grid_pred = torchvision.utils.make_grid(result["images"])
-                    tboard_writer.add_image("Predictions", img_tensor=img_grid_pred,
-                                        global_step=global_step, dataformats='CHW')
+                if (batch_idx + 1) % valid_period == 0:
+                    pred = output.argmax(dim=1, keepdim=True)
+                    train_acc = accuracy(pred, target, norm=True)
+                    tboard_writer.add_scalar("Accuracy/Train", train_acc, global_step)
+                    assert callable(test_routine)
+                    assert test_loader is not None
+                    val_loss, result = test_routine(model, device, test_loader, batches=1)
+                    if scheduler is not None:
+                        scheduler.step(val_loss)
+                        tboard_writer.add_scalar('LearningRate', optimizer.param_groups[0]['lr'], global_step)
+                    tboard_writer.add_scalar("Loss/Val", val_loss, global_step)
+                    tboard_writer.add_scalar("Accuracy/Val", result["accuracy"], global_step)
+                    if "images" in result.keys():
+                        img_grid_pred = torchvision.utils.make_grid(result["images"])
+                        tboard_writer.add_image("Predictions", img_tensor=img_grid_pred,
+                                            global_step=global_step, dataformats='CHW')
 
             if autosave_period is not None:
                 if (batch_idx + 1) % autosave_period == 0:
@@ -83,6 +87,8 @@ def parse_args():
                         help="Units for validation (e/b)")
     parser.add_argument("--pretrained", type=str,
                         help="Abs path to pretrained model")
+    parser.add_argument("--scheduler", type=int, default=1,
+                        help="Use lr scheduler or not")
     args = parser.parse_args()
     return args
 
@@ -104,11 +110,18 @@ def main():
     elif args.optimizer == "sgd":
         optimizer = SGD(model.parameters(), lr=args.learning_rate)
 
+    scheduler = None
+    if args.scheduler:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+
     try:
         for e in range(args.epochs):
-            train(model, train_dloader, optimizer, e, device=args.device,
+            train(model, train_dloader, optimizer, e, scheduler=scheduler, device=args.device,
                   autosave_period=None, valid_period=10, test_routine=test,
                   test_loader=test_dloader)
+        model_name = "pretrained_models/" + str(model) + "_completed_" + get_readable_timestamp() + ".pt"
+        torch.save(model.state_dict(), model_name)
+        print("Training completed. Final model " + model_name + " has been saved")
     except KeyboardInterrupt:
         model_name = "pretrained_models/" + str(model) + "_terminated_" + get_readable_timestamp() + ".pt"
         torch.save(model.state_dict(), model_name)
